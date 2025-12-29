@@ -1,16 +1,22 @@
 # main.py
 import datetime
-from scraper import fetch_weibo_hot, fetch_douyin_hot, fetch_xhs_hot, fetch_twitter_hot, fetch_baidu_hot, fetch_zhihu_hot, fetch_bilibili_hot, fetch_kuaishou_hot, fetch_xigua_hot, fetch_linuxdo_hot, fetch_52pojie_hot, fetch_youtube_hot, fetch_xueqiu_hot, fetch_reddit_hot, fetch_stackoverflow_hot
+from scraper import fetch_weibo_hot, fetch_douyin_hot, fetch_xhs_hot, fetch_twitter_hot, fetch_baidu_hot, fetch_zhihu_hot, fetch_bilibili_hot, fetch_kuaishou_hot, fetch_xigua_hot, fetch_linuxdo_hot, fetch_52pojie_hot, fetch_youtube_hot, fetch_finance_news, fetch_reddit_hot, fetch_stackoverflow_hot, fetch_xianyu_hot, fetch_xmfish_hot, fetch_netease_hot
 from notifier import send_wechat
-from config import ENABLE_WEIBO, ENABLE_DOUYIN, ENABLE_XHS, ENABLE_TWITTER, ENABLE_BAIDU, ENABLE_ZHIHU, ENABLE_BILIBILI, ENABLE_KUAISHOU, ENABLE_XIGUA, ENABLE_LINUXDO, ENABLE_52POJIE, ENABLE_YOUTUBE, ENABLE_XUEQIU, ENABLE_REDDIT, ENABLE_STACKOVERFLOW
+from config import ENABLE_WEIBO, ENABLE_DOUYIN, ENABLE_XHS, ENABLE_TWITTER, ENABLE_BAIDU, ENABLE_ZHIHU, ENABLE_BILIBILI, ENABLE_KUAISHOU, ENABLE_XIGUA, ENABLE_LINUXDO, ENABLE_52POJIE, ENABLE_YOUTUBE, ENABLE_FINANCE, ENABLE_REDDIT, ENABLE_STACKOVERFLOW, ENABLE_XIANYU, ENABLE_XMFISH, ENABLE_NETEASE
 
-def generate_html(data_dict, time_period="morning"):
+def generate_html(data_dict, time_period="morning_review"):
     """
     Generates HTML report optimized for WeChat Official Account.
     Each platform shows top 15 items only.
     """
-    # Determine time period text
-    period_text = "早安·热点速递 🌅" if time_period == "morning" else "晚安·热点盘点 🌙"
+    # Determine time period text (4 times a day)
+    period_texts = {
+        "morning_7am": "⏰ 07:00·晨间热点回顾",
+        "noon_12pm": "🕛 12:00·午间热点速递",
+        "evening_5pm": "🌇 17:00·傍晚热点更新",
+        "night_10pm": "🌙 22:00·全天热点盘点"
+    }
+    period_text = period_texts.get(time_period, "📊 热点速递")
     time_str = datetime.datetime.now().strftime("%Y年%m月%d日 %H:%M")
     
     # WeChat-friendly HTML with inline styles
@@ -35,9 +41,12 @@ def generate_html(data_dict, time_period="morning"):
         "Linux.do": "🐧",
         "52pojie": "🔓",
         "YouTube": "🎬",
-        "Xueqiu": "📈",
+        "财经": "💰",
         "Reddit": "👽",
-        "StackOverflow": "💻"
+        "StackOverflow": "💻",
+        "Xianyu": "🛒",
+        "Xmfish": "🐟",
+        "Netease": "📰"
     }
     
     for platform, items in data_dict.items():
@@ -55,8 +64,11 @@ def generate_html(data_dict, time_period="morning"):
         <p style="margin: 0; color: #95a5a6; font-size: 14px;">暂无数据</p>
 """
         else:
-            # Show only top 15 items
-            top_items = items[:15]
+            # 根据不同平台调整显示数量
+            if platform == "Weibo" or platform == "Douyin":
+                top_items = items[:20]  # 微博抖音显示20条
+            else:
+                top_items = items[:15]  # 其他平台显示15条
             html += """
         <ul style="margin: 0; padding: 0; list-style: none;">
 """
@@ -155,9 +167,9 @@ def main():
         print("Scraping YouTube...")
         data["YouTube"] = fetch_youtube_hot()
         
-    if ENABLE_XUEQIU:
-        print("Scraping Xueqiu...")
-        data["Xueqiu"] = fetch_xueqiu_hot()
+    if ENABLE_FINANCE:
+        print("Scraping Finance News...")
+        data["财经"] = fetch_finance_news()
         
     if ENABLE_REDDIT:
         print("Scraping Reddit...")
@@ -167,14 +179,49 @@ def main():
         print("Scraping StackOverflow...")
         data["StackOverflow"] = fetch_stackoverflow_hot()
         
-    # Determine time period
+    if ENABLE_XIANYU:
+        print("Scraping Xianyu...")
+        data["Xianyu"] = fetch_xianyu_hot()
+        
+    if ENABLE_XMFISH:
+        print("Scraping Xmfish...")
+        data["Xmfish"] = fetch_xmfish_hot()
+        
+    if ENABLE_NETEASE:
+        print("Scraping Netease...")
+        data["Netease"] = fetch_netease_hot()
+        
+    # Determine time period (4 times a day: 7:00, 12:00, 17:00, 22:00)
     current_hour = datetime.datetime.now().hour
-    if 6 <= current_hour < 12:
-        time_period = "morning"
-        period_cn = "早安·热点速递"
+    current_minute = datetime.datetime.now().minute
+    current_time = current_hour + current_minute / 60
+    
+    if 6 <= current_time < 9:  # 7:00时段 (6:00-9:00)
+        time_period = "morning_7am"
+        period_cn = "⏰ 07:00·晨间热点回顾"
+    elif 11 <= current_time < 14:  # 12:00时段 (11:00-14:00)
+        time_period = "noon_12pm"
+        period_cn = "🕛 12:00·午间热点速递"
+    elif 16 <= current_time < 19:  # 17:00时段 (16:00-19:00)
+        time_period = "evening_5pm"
+        period_cn = "🌇 17:00·傍晚热点更新"
+    elif 21 <= current_time <= 23.99 or 0 <= current_time < 1:  # 22:00时段 (21:00-01:00)
+        time_period = "night_10pm"
+        period_cn = "🌙 22:00·全天热点盘点"
     else:
-        time_period = "evening"
-        period_cn = "晚安·热点盘点"
+        # 默认使用最近时段的逻辑
+        if current_time < 6:
+            time_period = "night_10pm"
+            period_cn = "🌙 22:00·全天热点盘点"
+        elif current_time < 11:
+            time_period = "morning_7am"
+            period_cn = "⏰ 07:00·晨间热点回顾"
+        elif current_time < 16:
+            time_period = "noon_12pm"
+            period_cn = "🕛 12:00·午间热点速递"
+        else:
+            time_period = "evening_5pm"
+            period_cn = "🌇 17:00·傍晚热点更新"
     
     # Generate Report
     print(f"Generating {time_period} report...")
