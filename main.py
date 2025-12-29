@@ -65,12 +65,9 @@ def generate_html(data_dict, time_period="morning_review"):
 """
         else:
             # 根据不同平台调整显示数量
-            if platform == "Weibo":
-                top_items = items[:10]  # 微博显示10条 (Top 10 Hot News)
-            elif platform == "Douyin":
-                top_items = items[:20]  # 抖音保留20条
-            else:
-                top_items = items[:15]  # 其他平台显示15条
+            # 用户要求统一调整为12条
+            top_items = items[:12]
+            
             html += """
         <ul style="margin: 0; padding: 0; list-style: none;">
 """
