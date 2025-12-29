@@ -17,102 +17,79 @@ def get_headers():
 
 def fetch_weibo_hot():
     """
-    Fetches Weibo Hot Search List with multiple backup sources.
+    Fetches Weibo Hot Search List (Top 10).
     """
     hot_list = []
     
-    # 方法1: 微博官方API (主要源)
-    url1 = "https://weibo.com/ajax/side/hotSearch"
+    # Method 1: Web Scraping s.weibo.com/top/summary (Most standard list)
+    url = "https://s.weibo.com/top/summary"
     headers = get_headers()
-    headers['Referer'] = 'https://weibo.com'
+    # Adding a specific cookie often helps with Weibo visitor restriction
+    headers['Cookie'] = 'SUB=_2AkMSY8QPf8NxqwJRfm0UxGzhcYt1yA_EieKkseWcJRMxHRl-yT9jqkUstRB6PaaTaK_g-U8N1nEa_p-vRkI5M3U1;'
     
     try:
-        response1 = requests.get(url1, headers=headers, timeout=8)
-        if response1.status_code == 200:
-            data = response1.json()
-            if 'data' in data and 'realtime' in data['data']:
-                for item in data['data']['realtime'][:25]:
-                    title = item.get('word', '').strip()
-                    if title:
-                        link = f"https://s.weibo.com/weibo?q={title}"
-                        hot = str(item.get('num', ''))
-                        
-                        hot_list.append({
-                            "title": title,
-                            "url": link,
-                            "hot": hot
-                        })
-                if hot_list:
-                    return hot_list[:20]
-    except Exception as e:
-        print(f"Weibo API失败: {e}")
-    
-    # 方法2: 备用API - sinaapi
-    url2 = "https://s.weibo.com/top/summary"
-    try:
-        response2 = requests.get(url2, headers=headers, timeout=8)
-        if response2.status_code == 200:
-            soup = BeautifulSoup(response2.text, 'html.parser')
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            items = soup.select('td.td-02 a')
             
-            # 解析热搜列表
-            items = soup.select('.td-02 a')
-            for item in items[:30]:
+            for item in items:
                 title = item.get_text().strip()
-                if title and '热搜' not in title:
-                    href = item.get('href', '')
-                    link = f"https://s.weibo.com{href}" if href.startswith('/') else href
+                # Filter out sticky top items (usually has 'javascript:void(0)' or no rank)
+                href = item.get('href', '')
+                
+                # Standard hot search links usually start with /weibo?q=
+                if href.startswith('/weibo?q='):
+                    link = f"https://s.weibo.com{href}"
                     
-                    # 尝试获取热度
+                    # Try to find hot value
                     parent = item.find_parent('td')
-                    hot = ""
+                    hot_val = ""
                     if parent:
                         hot_elem = parent.find_next_sibling('td')
                         if hot_elem:
-                            hot = hot_elem.get_text().strip()
+                            hot_val = hot_elem.get_text().strip()
                     
                     hot_list.append({
                         "title": title,
-                        "url": link if link else f"https://s.weibo.com/weibo?q={title}",
-                        "hot": hot
+                        "url": link,
+                        "hot": hot_val
                     })
+                    
             if hot_list:
-                return hot_list[:20]
+                return hot_list[:10] # Return top 10 as requested
+                
     except Exception as e:
-        print(f"Weibo备用源失败: {e}")
-    
-    # 方法3: 第三方API
-    url3 = "https://api.weibo.cn/2/guest/page?containerid=106003type%3D25%26t%3D3%26disable_hot%3D1%26filter_type%3Drealtimehot"
+        print(f"Weibo Web Scraping failed: {e}")
+
+    # Method 2: Fallback to Ajax API
+    url2 = "https://weibo.com/ajax/side/hotSearch"
     try:
-        response3 = requests.get(url3, headers=headers, timeout=8)
-        if response3.status_code == 200:
-            data = response3.json()
-            # 尝试解析第三方API结构
-            if 'cards' in data:
-                for card in data['cards']:
-                    if 'card_group' in card:
-                        for item in card['card_group'][:20]:
-                            title = item.get('desc', '').strip()
-                            if title:
-                                scheme = item.get('scheme', '')
-                                link = scheme if scheme else f"https://s.weibo.com/weibo?q={title}"
-                                hot = item.get('desc_extr', '')
-                                
-                                hot_list.append({
-                                    "title": title,
-                                    "url": link,
-                                    "hot": hot
-                                })
+        response2 = requests.get(url2, headers=get_headers(), timeout=10)
+        if response2.status_code == 200:
+            data = response2.json()
+            if 'data' in data and 'realtime' in data['data']:
+                for item in data['data']['realtime'][:15]:
+                    title = item.get('word', '').strip()
+                    # Skip ads
+                    if not item.get('is_ad', 0):
+                        hot_list.append({
+                            "title": title,
+                            "url": f"https://s.weibo.com/weibo?q={title}",
+                            "hot": str(item.get('num', ''))
+                        })
                 if hot_list:
-                    return hot_list[:20]
+                    return hot_list[:10]
     except Exception as e:
-        print(f"Weibo第三方API失败: {e}")
-    
-    # 如果所有方法都失败，使用模拟数据
+        print(f"Weibo API failed: {e}")
+        
+    # If all fail, use simulation if configured to do so, or try Tophub via separate function call if needed
+    # (Here we just return simulated if empty to ensure display)
     if not hot_list:
-        print("所有微博源都失败，使用模拟数据")
-        return _get_weibo_simulated_data()
-    
-    return hot_list[:20]
+        print("Weibo sources failed, using simulated data")
+        return _get_weibo_simulated_data()[:10]
+        
+    return hot_list[:10]
 
 def _get_weibo_simulated_data():
     """Return simulated Weibo hot search data."""
