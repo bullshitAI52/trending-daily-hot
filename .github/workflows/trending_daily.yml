@@ -3,7 +3,12 @@ name: Daily Trending Alert
 on:
   schedule:
     # Runs at 00:30 UTC (8:30 AM Beijing Time)
-    - cron: '30 0 * * *'
+    # Runs 4 times a day (Beijing Time: 7:00, 12:00, 17:00, 22:00)
+    # UTC: 23:00 (prev day), 04:00, 09:00, 14:00
+    - cron: '0 23 * * *'
+    - cron: '0 4 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 14 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
