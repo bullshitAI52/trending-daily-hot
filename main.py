@@ -17,7 +17,12 @@ def generate_html(data_dict, time_period="morning_review"):
         "night_10pm": "🌙 22:00·全天热点盘点"
     }
     period_text = period_texts.get(time_period, "📊 热点速递")
-    time_str = datetime.datetime.now().strftime("%Y年%m月%d日 %H:%M")
+    period_text = period_texts.get(time_period, "📊 热点速递")
+    
+    # Fix: Ensure displayed time is also Beijing Time
+    utc_now = datetime.datetime.utcnow()
+    beijing_now = utc_now + datetime.timedelta(hours=8)
+    time_str = beijing_now.strftime("%Y年%m月%d日 %H:%M")
     
     # WeChat-friendly HTML with inline styles
     html = f"""
@@ -191,8 +196,13 @@ def main():
         data["Netease"] = fetch_netease_hot()
         
     # Determine time period (4 times a day: 7:00, 12:00, 17:00, 22:00)
-    current_hour = datetime.datetime.now().hour
-    current_minute = datetime.datetime.now().minute
+    # Determine time period (4 times a day: 7:00, 12:00, 17:00, 22:00)
+    # Fix: GitHub Actions runs in UTC, so we must explicitly convert to Beijing Time (UTC+8)
+    utc_now = datetime.datetime.utcnow()
+    beijing_now = utc_now + datetime.timedelta(hours=8)
+    
+    current_hour = beijing_now.hour
+    current_minute = beijing_now.minute
     current_time = current_hour + current_minute / 60
     
     if 6 <= current_time < 9:  # 7:00时段 (6:00-9:00)
