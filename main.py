@@ -196,7 +196,6 @@ def main():
         data["Netease"] = fetch_netease_hot()
         
     # Determine time period (4 times a day: 7:00, 12:00, 17:00, 22:00)
-    # Determine time period (4 times a day: 7:00, 12:00, 17:00, 22:00)
     # Fix: GitHub Actions runs in UTC, so we must explicitly convert to Beijing Time (UTC+8)
     utc_now = datetime.datetime.utcnow()
     beijing_now = utc_now + datetime.timedelta(hours=8)
@@ -205,6 +204,7 @@ def main():
     current_minute = beijing_now.minute
     current_time = current_hour + current_minute / 60
     
+    # Logic to select time period
     if 6 <= current_time < 9:  # 7:00时段 (6:00-9:00)
         time_period = "morning_7am"
         period_cn = "⏰ 07:00·晨间热点回顾"
@@ -218,32 +218,29 @@ def main():
         time_period = "night_10pm"
         period_cn = "🌙 22:00·全天热点盘点"
     else:
-        # 默认使用最近时段的逻辑
-        if current_time < 6:
-            time_period = "night_10pm"
-            period_cn = "🌙 22:00·全天热点盘点"
-        elif current_time < 11:
-            time_period = "morning_7am"
-            period_cn = "⏰ 07:00·晨间热点回顾"
-        elif current_time < 16:
-            time_period = "noon_12pm"
-            period_cn = "🕛 12:00·午间热点速递"
+        # Check for force flag
+        import sys
+        if "--force" in sys.argv or "--test" in sys.argv:
+            print("Force mode enabled. Using default time period.")
+            time_period = "noon_12pm" # Default for testing
+            period_cn = "🧪 测试推送·热点速递"
         else:
-            time_period = "evening_5pm"
-            period_cn = "🌇 17:00·傍晚热点更新"
-    
+            print(f"Current time {current_hour}:{current_minute} is not in reporting hours. Skipping.")
+            return
+
     # Generate Report
     print(f"Generating {time_period} report...")
     html_content = generate_html(data, time_period)
     
     # Send
     print("Sending notification...")
-    date_str = datetime.datetime.now().strftime("%m月%d日")
+    date_str = beijing_now.strftime("%m月%d日")
     subject = f"{period_cn} | {date_str}"
     succeeded = send_wechat(subject, html_content)
     
     if not succeeded:
         print("\n=== DEBUG: Output Content (since send failed) ===")
+        print("Note: This failure is expected if no secrets are configured locally.")
         # Print a snippet if send failed, so user can see it works locally
         print(html_content[:500] + "...")
 
