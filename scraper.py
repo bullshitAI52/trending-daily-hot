@@ -57,7 +57,7 @@ def fetch_weibo_hot():
                     })
                     
             if hot_list:
-                return hot_list[:10] # Return top 10 as requested
+                return hot_list[:20] # Return top 20 to ensure main.py can take 12
                 
     except Exception as e:
         print(f"Weibo Web Scraping failed: {e}")
@@ -69,7 +69,7 @@ def fetch_weibo_hot():
         if response2.status_code == 200:
             data = response2.json()
             if 'data' in data and 'realtime' in data['data']:
-                for item in data['data']['realtime'][:15]:
+                for item in data['data']['realtime'][:25]:
                     title = item.get('word', '').strip()
                     # Skip ads
                     if not item.get('is_ad', 0):
@@ -79,7 +79,7 @@ def fetch_weibo_hot():
                             "hot": str(item.get('num', ''))
                         })
                 if hot_list:
-                    return hot_list[:10]
+                    return hot_list[:20]
     except Exception as e:
         print(f"Weibo API failed: {e}")
         
@@ -87,9 +87,9 @@ def fetch_weibo_hot():
     # (Here we just return simulated if empty to ensure display)
     if not hot_list:
         print("Weibo sources failed, using simulated data")
-        return _get_weibo_simulated_data()[:10]
+        return _get_weibo_simulated_data()[:20]
         
-    return hot_list[:10]
+    return hot_list[:20]
 
 def _get_weibo_simulated_data():
     """Return simulated Weibo hot search data."""
