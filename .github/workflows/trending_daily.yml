@@ -33,11 +33,24 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Scraper
+      run: python main.py
       env:
         # Secrets must be configured in GitHub Repo Settings -> Secrets and variables -> Actions
+        # Option 1: WxPusher (Recommended)
+        WXPUSHER_APP_TOKEN: ${{ secrets.WXPUSHER_APP_TOKEN }}
+        WXPUSHER_USER_UID: ${{ secrets.WXPUSHER_USER_UID }}
+        
+        # Option 2: WeChat Test Account
+        WECHAT_APPID: ${{ secrets.WECHAT_APPID }}
+        WECHAT_APPSECRET: ${{ secrets.WECHAT_APPSECRET }}
+        WECHAT_TEMPLATE_ID: ${{ secrets.WECHAT_TEMPLATE_ID }}
+        WECHAT_USER_OPENID: ${{ secrets.WECHAT_USER_OPENID }}
+        
+        # Option 3: PushPlus
         PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        
+        # Option 4: ServerChan
         SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+        
+        # Scraper Config
         XHS_COOKIE: ${{ secrets.XHS_COOKIE }}
-        # XHS_COOKIE is critical for Xiaohongshu. 
-        # Update it periodically in Secrets as it expires.
-      run: python main.py
